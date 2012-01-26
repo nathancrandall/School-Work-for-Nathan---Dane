@@ -10,6 +10,7 @@
  * function declaration formats unchanged.
  */
 
+
 #include "powermethod.h"
 
 void generatematrix(double * mat, int size)
@@ -21,30 +22,33 @@ void generatematrix(double * mat, int size)
 
   int tempMatrix[size*size];
 
-  for(int i = 0; i < size; i++)
+  int i, j, k;
+
+  for(i = 0; i < size; i++)
   {
-    for(int j = 0; j < size; j++)
+    for(j = 0; j < size; j++)
       tempMatrix[(i*size)+j] = 0;
-    for(int k = 0; k <= i; k++)
+    for(k = 0; k <= i; k++)
       tempMatrix[(i*size)+k] = i+1;
   }
 
   int offset = ((size*size)/nprocs)*rank;
-  for(int i = 0; i < (size*size)/nprocs; i++)
+  for(i = 0; i < (size*size)/nprocs; i++)
     mat[i] = tempMatrix[i+offset];
 }
 
 // Subroutine to generate a random vector
 void generatevec(double * x,int size)
 {
-  for(int i = 0; i < size; i++)
+  int i;
+  for(i = 0; i < size; i++)
     x[i] = 1;
 }
-
 double norm2(double *vector, int size)
 {
   double total = 0;
-  for(int i = 0; i < size; i++)
+  int i;
+  for(i = 0; i < size; i++)
     {
       total += (vector[i] * vector[i]);
     }
@@ -63,40 +67,36 @@ void matVec(double *matrix, double *vector, int mSize, int vSize, double *result
     printf("cannot multiply together.\n");
     return;
   }
-
-
-
-  double temp[mSize*mSize];
-
-  for(int i = 0; i < nprocs;i++)
-    MPI_Gather(matrix, (mSize*mSize)/nprocs, MPI_DOUBLE, temp ,(mSize*mSize)/nprocs, MPI_DOUBLE,i, MPI_COMM_WORLD);
-
-
- double *newVec = (double*)malloc(sizeof(double)*mSize);
-  for(int i = 0; i < mSize; i++)
+  int i, j;
+ double *newVec = (double*)malloc(sizeof(double)*mSize/nprocs);
+  for(i = 0; i < mSize/nprocs; i++)
     newVec[i] = 0;
-  for(int i = 0; i < mSize; i++)
+  for(i = 0; i < mSize/nprocs; i++)
     {
-      for(int j = 0; j < vSize; j++)
+      for(j = 0; j < vSize; j++)
         {
-          newVec[i] += temp[(i*mSize)+j] * vector[j];
+          newVec[i] += matrix[(i*mSize)+j] * vector[j];
         }
     }
-  for(int i = 0; i < mSize; i++)
-    result[i] = newVec[i];
+
+  for(i = 0; i < nprocs; i++)
+  MPI_Gather(newVec, mSize/nprocs, MPI_DOUBLE, result ,mSize/nprocs, MPI_DOUBLE,i, MPI_COMM_WORLD);
+
+
   free(newVec);
 }
-
-
 double powerMethod(double * mat, double * x, int size, int iter)
 {
   double newX[size];
-  for(int i = 0; i < iter; i++)
+  int i, j;
+  for(i = 0; i < iter; i++)
     {
-      for(int j = 0; j < size; j++)
+      for(j = 0; j < size; j++)
         {
           x[j] = x[j] / norm2(x, size);
 
         }
       matVec(mat, x, size, size, x);
     }
+  return norm2(x, size);
+}
